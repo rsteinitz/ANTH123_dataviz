@@ -1,0 +1,360 @@
+---
+title: "geospatial data viz demo - BLANK"
+author: "Ronnie Bailey-Steinitz"
+date: "5/9/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) #warning = FALSE, message = FALSE
+```
+
+For more beginner-level examples, go to:
+https://r-spatial.org/r/2018/10/25/ggplot2-sf.html
+
+for more on the {sf} package:
+https://r-spatial.org/r/2017/01/12/newssf.html
+
+for more general R-spatial stuff: https://r-spatial.org/
+
+R has been used for the analysis of spatial data since the early days of R.
+
+### Intro
+#### Attach packages
+```{r attach packages}
+
+library(tidyverse) # does everything
+library(plyr) # for some wrangling
+#library(forcats) # use for arranging or reordering factor levels
+
+library(spData) # small geographic data sets
+#library(basemaps) # use to add basemaps (backdrop) to your maps
+library(sf) # create sf; extends data.frame-like objects with a simple feature list column
+library(tmap) # use this for mapping
+library(tmaptools) # use this for geocoding cities using OSM instead of Google (which requires API)
+
+library(xlsx) # read in .xlsx data
+
+library(tigris) # use to download GIS TIGER shapefiles from the U.S. Census Bureau; The core TIGER/Line shapefiles do not include demographic data, but they do contain geographic entity codes (GEOIDs) that can be linked to the Census Bureau’s demographic data, available on data.census.gov.
+
+
+#library(rnaturalearth) # to download U.S. borders and state lines
+#library(osmdata) #get bounding box for a particular location
+
+filter <- dplyr::filter
+select <- dplyr::select
+
+```
+
+#### Load some basic data
+```{r CRS Info}
+# Read in vector data from spData package
+
+
+# Check the class of the object
+
+
+#Simple features are a standard for the exchange of spatial feature data, meaning points, lines and polygons (and not e.g. vector topology, networks, or rasters). 
+
+# Check the CRS of the data using st_crs() command
+
+
+# Take a peak into the data set:
+
+
+```
+
+In the `world` dataset the `head()` command returns the "simple feature dialogue"; it tells you what kind of "geometry" you are dealing with, the Geodetic CRS, and how many "fields" or attributes you have linked to each polygon.
+
+Now let's do a quick visualization:
+#### Quick Viz
+```{r world plot}
+
+# The default plot of an sf object is a multi-plot of all attributes, up to a reasonable maximum:
+
+
+# so we can tell it to plot less... 
+
+
+# what are the headers of each of the four plots?
+
+
+# can we plot just one column?
+
+
+
+
+
+# but we can choose which column to plot by indexing, which maintains the association with the 'sticky geometry':
+
+
+# you can control the legend appearance and position:
+# set to a particular side (1=below, 2=left, 3=above, 4=right):
+
+
+# and add axes with lat/long
+
+
+
+
+# you can also do this with tidyverse:
+
+
+
+
+# and with tmap
+#this is much closer to a publication-ready map
+
+
+
+
+# and with ggplot, for ease of formatting!
+
+
+# and then modify things!
+
+
+
+# you can even re-project on the fly while plotting:
+
+
+
+# The function coord_sf allows to deal with the coordinate system, which includes both projection and extent of the map. By default, the map will use the coordinate system of the first layer that defines one (i.e. scanned in the order provided), or if none, fall back on WGS84 (latitude/longitude, the reference system used in GPS). Using the argument crs, it is possible to override this setting, and project on the fly to any projection. This can be achieved using any valid PROJ4 string (here, the European-centric ETRS89 Lambert Azimuthal Equal-Area projection)
+```
+
+
+Ok. Now, let's get into some actual data.
+
+### Redlining Demo
+**REDLINING:** In the United States, redlining is the systematic denial of various services by federal government agencies, local governments as well as the private sector either directly or through the selective raising of prices. Neighborhoods with high proportion of minority residents are more likely to be redlined than other neighborhoods with similar household incomes, housing age and type, and other determinants of risk, but different racial composition... describes the discriminatory practice of fencing off areas where banks would avoid investments based on community demographics (Source: Wikipedia)
+
+
+Background Information: Historic Home Owners' Loan Corporation Neighborhood Appraisal Map
+
+In 1934, the Federal Housing Administration created a financial mortgage system that rated mortgage risks for properties based on various criteria but was centered on race and ethnicity. This rating system propagated racial segregation that in many ways persists today.
+
+The FHA Underwriting Handbook incorporated color-coded real estate investment maps that classified neighborhoods based on assumptions about a community, primarily their racial and ethnic composition, and not on the financial ability of the residents to satisfy the obligations of a mortgage loan. These maps, created by the Home Owners Loan Corporation (HOLC) were used to determine where mortgages could or could not be issued.
+
+The neighborhoods were categorized into four types:
+
+**Type A** : Best - newer or areas still in demand
+
+**Type B** : Still Desirable - areas expected to remain stable for many years
+
+**Type C** : Definitely Declining - areas in transition
+
+**Type D** : Hazardous - older areas considered risky
+
+
+Neighborhoods shaded red were deemed too hazardous for federally-back loans. **These "red-lined" neighborhoods were where most African American residents lived.**
+
+Many have argued tha the HOLC maps institutionalized discriminating lending practices which not only perpetuated racial segregation but also led to neighborhood disinvestment. Today, neighborhoods classified as Type C and Type D in 2934 make up the majority of neighborhoods in 2016 that are Areas of Concentrated Poverty where 50% or More are People of Color.
+
+Purpose: Representing this historic map in digital form allows users to compare historically characterized neighborhoods in relation to current demographic trends.
+
+Red-lining Data Time-Period: 01/01/1934
+
+#### Load datasets
+```{r}
+
+projcrs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" #set project CRS
+
+# for more info on CRS: https://epsg.io/
+
+#Minneapolis, Minnesota: Historic Home Owners' Loan Corporation Neighborhood Appraisal Map
+#Download Link: https://resources.gisdata.mn.gov/pub/gdrs/data/pub/us_mn_state_metc/plan_historic_holc_appraisal/shp_plan_historic_holc_appraisal.zip
+#Metadata: https://resources.gisdata.mn.gov/pub/gdrs/data/pub/us_mn_state_metc/plan_historic_holc_appraisal/metadata/metadata.html
+rl <- read_sf("HistoricHOLCNeighborhoodAppraisal.shp") #actual shapefiles
+
+pa <- read.xlsx("PurpleAirData_Minneapolis.xlsx", "Sheet1")
+
+
+```
+
+#### Load GIS data from US Census Bureau - Minnesota counties
+```{r}
+
+# MN state outline
+MNstate_lines <- tigris::states(cb = TRUE) %>% 
+  subset(NAME == "Minnesota") #If cb is set to TRUE, download a generalized (1:500k) states file. Defaults to FALSE (the most detailed TIGER/Line file)
+
+
+
+# MN county lines: this can be used as is within tmap-- don't nedd to convert unless you want to do additional analysis
+MNcounty_lines <- tigris::counties(state = "MN", cb = TRUE) 
+
+
+
+# we'll use the above shapefiles later!
+
+# if you want to export the shapefile (e.g., for use in QGIS)
+#st_write(MNcounty_lines, "MNcounty_lines.shp")
+
+```
+
+#### Redlining data wrangling
+```{r redlining data}
+
+# let's check out the data
+View(rl)
+names(rl)
+
+# okay, first let's get an easier column names
+rl_cats <- rl %>% 
+  dplyr::rename(cats = HSG_SCALE)
+
+unique(rl_cats$cats) # which neighborhood categories exist?
+
+# let's simplify
+rl_cats$cats <- plyr::revalue(rl_cats$cats, c("Undeveloped"="Other",
+                                              "Business and Industrial"="Other",
+                                              "Open Water"="Other",
+                                              "Park / Open Space"="Other"))
+
+rl_cats$cats[is.na(rl_cats$cats)] <- "Other"
+
+# let's look at what housing categories we have now
+unique(rl_cats$cats)
+
+#reorder factor levels
+cat_order <- c("Best", "Still Desirable", "Definitely Declining", "Other", "Hazardous")
+
+rl_ordered <- rl_cats %>% 
+  mutate(cats =  factor(cats, levels = cat_order)) %>%
+  arrange(cats) #reorder best -> least
+```
+
+
+#### Purple Air geometry
+```{r purple air}
+
+# convert to sf, with sticky geometry)
+
+
+
+```
+
+### Minneapolis Redlining 
+#### with *ggplot*
+```{r map with ggplot}
+
+# let's try plotting
+
+
+# yikes! looks a bit muddy...
+
+
+
+# better! Now let's add some flare!
+
+
+
+# great! Now let's add some additional data to this!
+
+# add Purple Air data
+
+
+
+# too far and wide... 
+# So let's limit the size of the map using the red-lining data, and coord_sf()
+
+# get bounding box coords for the red-lining data
+
+# xmin: 474025 ymin: 4970465 xmax: 499652.2 ymax: 4988693
+
+
+
+
+
+
+# and last, let's change the point colors to match temperature scales:
+
+
+
+
+
+
+```
+
+Four categories of neighborhoods:
+
+Type A : Best - newer or areas stil in demand
+
+Type B : Still Desirable - areas expected to remain stable for many years
+
+Type C : Definitely Declining - areas in transition
+
+Type D : Hazardous - older areas considered risky
+
+Neighborhoods in red were deemed too hazardous for federally-back loans. These "red-lined" neighborhoods were where most African American residents lived.
+
+
+#### with *tmap*
+```{r map with tmap}
+
+# just looking at MN county lines: ggplot
+ggplot(MNcounty_lines) + geom_sf()
+
+# and tmap
+tm_shape(MNcounty_lines) + 
+  tm_polygons()
+# hover over tmap to see data!
+
+
+# TRY FIRST WITHOUT BBOX
+# want to set bounding box for plot
+rl_bbox <- st_bbox(rl_ordered)
+
+tm_shape(MNcounty_lines, bbox = rl_bbox) + #county lines
+  # now specify the baselayers you want to include in the option widget:
+  tmap_options(basemaps = c(
+                            Canvas = "Esri.WorldGrayCanvas",
+                            Terrain = "Stamen.TerrainBackground",
+                            Imagery = "Esri.WorldImagery"
+                            ),
+                            overlays = c(Labels = paste0("http://services.arcgisonline.com/arcgis/rest/services/Canvas/", "World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}")), alpha = 0.8) + #you need to specify this URL to include a basemaps
+  
+  tm_borders(col = "blue", alpha = 0.4, lwd = 1) +
+  
+  tm_shape(MNstate_lines) + #state lines
+    tm_borders(col = "magenta3", alpha = 0.2, lwd = 2) +
+  
+  tm_shape(rl_ordered) + #red-lining catergorization of each neighborhood in Minneapolis and St. Paul
+    tm_polygons("cats",
+                palette = "-Spectral",
+                border.alpha = 0.3,
+                id = "cats",
+                popup.vars = c("Category: " = "cats"),
+                title = "Redlining Areas in Minneapolis") +
+
+  tm_layout(title = "Redlining in Minneapolis", 
+            title.size = 1,
+            legend.outside.size = 0.5
+            ) +  
+  
+  tm_legend(legend.position = c("left", "bottom")) +
+  tm_scale_bar(breaks = c(0, 100, 200), position = c("right", "bottom"), color.dark = "grey70", color.light = "white") +
+  tmap_mode("view") 
+  #tmap_mode("plot") #change map mode
+
+```
+
+### More stuff with tmap
+```{r}
+
+# combining 'world' with 'red-lining' features:
+
+tm_shape(world) +
+  tm_fill(col = "continent") + 
+  tm_shape(rl_ordered) + #red-lining catergorization of each neighborhood in Minneapolis and St. Paul
+    tm_polygons("cats",
+                palette = "-Spectral",
+                border.alpha = 0.3,
+                id = "cats",
+                popup.vars = c("Category: " = "cats"),
+                title = "Redlining Areas in Minneapolis")
+
+```
+
